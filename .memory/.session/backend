@@ -1,0 +1,52 @@
+BACKEND - QUARKUS
+==================
+
+Tecnologia: Java 17, Quarkus 3.8.1, Maven (via Maven Wrapper ./mvnw)
+Porta: 8180 (8080 ocupada por Jenkins)
+CORS: habilitado para localhost:3000
+
+DEPENDENCIAS:
+  quarkus-resteasy-reactive-jackson (REST + JSON)
+  quarkus-jdbc-postgresql (driver PostgreSQL)
+  quarkus-agroal (connection pool)
+
+PACOTE: com.monitor.acordocomercial
+
+CLASSES:
+  entity/AcordoComercial.java       -> POJO cabecalho do acordo
+  dto/AcordoDetalhadoDTO.java       -> DTO consolidado com 13 sub-DTOs
+  dto/VendaDTO.java                 -> DTO para vendas GCEITM01
+  repository/AcordoRepository.java  -> JDBC puro (sem JPA), queries nativas
+  resource/AcordoResource.java      -> REST endpoints
+
+ENDPOINTS:
+  GET /api/acordos            -> Lista acordos sell out (TX_TIPO='S', TX_SUBTIPO='O')
+  GET /api/acordos/{id}       -> Detalhe completo (13 secoes de dados)
+  GET /api/acordos/{id}/vendas -> Vendas do periodo
+
+POR QUE JDBC PURO (sem JPA):
+  As tabelas legadas (GCENFS01, GCEITM01) usam nomes de colunas curtos (3 letras)
+  que nao mapeiam bem para JPA. JDBC permite queries SQL diretas.
+
+QUERIES IMPORTANTES:
+  - Lotes: TB_ACORDOCOMERCIALSELLOUT.CD_ACORDO = NR_ACORDO (nao ID_ACORDO)
+  - Prestacoes: TB_ACORDOCOMERCIALPRESTACAO.NR_ACORDO = NR_ACORDO
+  - Vendas: join GCEITM01 + GCENFS01 com filtros MOD='E', OP1='S', PDV=0, CUP=0
+  - Integracao: via TB_ACORDOCOMERCIALINTEGRACAODOCUMENTO
+
+CONFIG: backend/src/main/resources/application.properties
+  quarkus.datasource.db-kind=postgresql
+  quarkus.datasource.jdbc.url=jdbc:postgresql://192.168.3.143:5432/323665
+  quarkus.datasource.username=postgres
+  quarkus.datasource.password=postgres
+  quarkus.http.port=8180
+
+COMO RODAR:
+  cd D:\Lobo\Projetos\claude\MonitorAcordoComercial\backend
+  JAVA_HOME="C:/Program Files/Java/jdk-17.0.5" ./mvnw quarkus:dev -Dquarkus.console.enabled=false
+
+NOTAS TECNICAS:
+  - NAO usar text blocks (""") com concatenacao de variaveis no meio, usar String concat normal
+  - Quarkus 3.8.1 requer Java 17 (maquina tem Java 11 como padrao)
+  - Maven nao esta no PATH, usar ./mvnw (Maven Wrapper)
+  - Usar -Dquarkus.console.enabled=false para evitar prompt interativo do Quarkus analytics

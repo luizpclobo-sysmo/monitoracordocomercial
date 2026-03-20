@@ -1,0 +1,41 @@
+FRONTEND - REACT
+=================
+
+Tecnologia: React 18, TypeScript, Vite
+Porta: 3000 (proxy /api -> localhost:8180)
+
+DEPENDENCIAS:
+  react, react-dom, react-router-dom, axios
+  Sem framework CSS - CSS puro com variáveis
+
+COMPONENTES:
+  App.tsx                   -> Router: / (lista) e /acordos/:id (detalhe)
+  components/AcordoList.tsx -> Grid de acordos com badges de situacao
+  components/AcordoDetail.tsx -> Pagina de detalhe com secoes colapsaveis:
+    1. Cabecalho (numero, situacao, datas, fornecedor)
+    2. Configuracao Sell Out (fechamento, pgto, banco)
+    3. Produtos (grid: produto, percentual, valor)
+    4. Empresas
+    5. Pipeline/Processamento (visual flow A->AP->PP->AF->PF->X)
+    6. Periodos/Fragmentos (grid: produto, empresa, inicio, fim)
+    7. Lotes (grid: lote, valor, empresa, periodo)
+    8. Prestacoes (grid: doc, prestacao, valor, vencimento)
+    9. Distribuicao
+    10. Integracao Documento
+    11. Vendas (grid: produto, qtd, valor, empresa)
+  components/StatusBadge.tsx      -> Badge colorido para situacao/etapa
+  components/ProcessingPipeline.tsx -> Pipeline visual da maquina de estados
+
+SERVICES:
+  services/api.ts -> Axios com 3 chamadas:
+    listarAcordos(), buscarAcordoDetalhado(id), buscarVendas(id)
+
+TYPES:
+  types/acordo.ts -> Interfaces TypeScript para todos os DTOs
+
+CORES DAS BADGES:
+  F=Firmado (azul), X=Finalizado (verde), E=Erro (vermelho), D=Descartado (cinza)
+  A=Aberto (amarelo)
+
+LABELS: Todos em portugues (Acordo, Situação, Período, Produto, etc.)
+FORMATO: Datas dd/mm/yyyy, moeda R$ com 2-4 casas decimais

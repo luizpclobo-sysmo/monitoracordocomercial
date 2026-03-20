@@ -1,0 +1,118 @@
+FLUXO COMPLETO DO FECHAMENTO (DLL + DELPHI)
+=============================================
+
+O fechamento tem DOIS caminhos:
+  A) Via DLL (chamada pelo Extrator 9 do Sysmo Integrador)
+  B) Via tela (fechamento manual ou automatico pelo Delphi)
+
+--- CAMINHO A: DLL (Extrator 9) ---
+
+1. Extratores 5-8 preparam o processamento de fechamento:
+   - Ext.5: Insere acordos em TB_ACORDOCOMERCIALSELLOUTPROCESSAMENTO (tipo='F')
+   - Ext.6: Insere itens em TB_ACORDOCOMERCIALSELLOUTITEMPROCESSAMENTO (tipo='F')
+   - Ext.7: Resolve prioridades (abertura vs fechamento, conflitos)
+   - Ext.7 ev.3 (NOVO): Calcula fragmentos de periodos ativos -> TB_ACORDOCOMERCIALSELLOUTPERIODO
+   - Ext.8: Chama PCD com AEstornar='S' para cada item -> estorna verba
+   - Ext.8 ev.3: Propaga falha de itens para cabecalho
+
+2. Extrator 9 (DLL):
+   - ev.1: Transicao cabecalho AF -> PF
+   - ev.2: Chama DLL ProcessarFechamento
+
+3. DLL ProcessarFechamento (Rgn.Processamento.Fechamento.pas):
+   - DAO.Localizar(): SELECT WHERE CD_TIPO='F' AND CD_ETAPA='PF'
+   - Para cada acordo:
+     a) Inicia transacao
+     b) Chama ExecutarFechamento(IdAcordo, ProcessarCustoComercial=False)
+     c) Sucesso: CD_ETAPA='X' / Falha: rollback + CD_ETAPA='E'
+
+4. ExecutarFechamento (Rgn...SellOut.Fechamento.pas):
+   - LocalizarAcordo(IdAcordo) -> busca dados do acordo + total
+   - PreencherVO -> IdAcordo, NumeroAcordo, Empresa, Usuario, DataInicio, DataFim,
+     FechamentoManual, AtribuirVerbaContaComercial
+   - ProcessarFechamento:
+     a) CarregarSistema (dados da empresa)
+     b) ExecutarFechamentoAutomatico (MODIFICADO):
+        - Se FechamentoManual = NAO:
+          -> Busca fragmentos em TB_ACORDOCOMERCIALSELLOUTPERIODO
+          -> Se TEM fragmentos: para cada fragmento, Localizar+Salvar vendas do periodo
+          -> Se NAO tem fragmentos: Localizar+Salvar vendas do periodo inteiro (fallback)
+        - Se FechamentoManual = SIM: nao faz nada
+     c) FinalizarAcordo:
+        - Se ProcessarCustoComercial E NAO AtribuirVerbaContaComercial:
+          -> Estorna custo comercial
+        - UPDATE TB_ACORDOCOMERCIAL SET TX_SITUACAO='X'
+     d) GravarNotificacao
+
+--- CAMINHO B: Tela (sem DLL) ---
+ExecutarFechamento(AStackTrace) - overload sem IdAcordo:
+  - LocalizarAcordosComTerminoDeVigencia():
+    SELECT WHERE TX_SITUACAO NOT IN ('D','E','X')
+    AND TX_TIPO||TX_SUBTIPO='SO' AND DT_ACORDOFIM < current_date
+  - Para cada acordo: ExecutarFechamento(IdAcordo, True)
+
+--- FONTES DELPHI ---
+  Rgn: D:\dsv-git\dsv-delphi\sysmovs\pas\Comercial\AcordoComercialNovo\Acordo\SellOut\
+    Rgn.Comercial.AcordoComercialNovo.Acordo.SellOut.Fechamento.pas
+    Rgn.Comercial.AcordoComercialNovo.Acordo.SellOut.Fechamento.Geral.pas
+    Rgn.Comercial.AcordoComercialNovo.Acordo.SellOut.Fechamento.Notificacao.pas
+  DAO:
+    DAO.Comercial.AcordoComercialNovo.Acordo.SellOut.Fechamento.pas
+  Lote/Vendas:
+    Rgn.Comercial.AcordoComercial.SellOut.pas (Localizar, Salvar lotes, ProcessarVendas)
+    DAO.Comercial.AcordoComercial.SellOut.pas (LocalizarVendas)
+  DLL wrapper:
+    D:\dsv-git\dsv-delphi\sysmos1-modular\Comercial\AcordoComercial\SellOut\src\pas\
+      Rgn.Processamento.Fechamento.pas
+      DAO.Processamento.Fechamento.pas
+
+--- SOLUCAO: FECHAMENTO FRAGMENTADO ---
+
+TABELA NOVA: TB_ACORDOCOMERCIALSELLOUTPERIODO
+  id_sequencial, cd_acordo, cd_empresa, cd_produto, dt_inicio, dt_fim
+  Generator: GEN_ACORDOCOMERCIALSELLOUTPERIODO
+  Indice: ACORDOCOMERCIALSELLOUTPERIODO_IDX01 (cd_acordo, cd_empresa, cd_produto)
+
+LIQUIBASE (db-sysmo-s1):
+  tables/tb_acordocomercialselloutperiodo.xml
+  sequences/gen_acordocomercialselloutperiodo.xml
+  primary-keys/acordocomercialselloutperiodo_pk.xml
+  indexes/acordocomercialselloutperiodo_idx01.xml
+
+EXECUTER (sysmo-executer):
+  Evento ID=199, Extrator 7 (cd_extrator=60), ordem=3
+  Descricao: CALCULAR PERIODOS ATIVOS (FRAGMENTOS) PARA FECHAMENTO
+  Verifica se tabela existe (compatibilidade com clientes sem a feature)
+  Para cada item fechamento em AV:
+    1. Comeca com periodo completo do acordo
+    2. Busca acordos com maior prioridade (menor duracao, inicio recente, maior ID)
+    3. Subtrai periodos sobrepostos (5 casos: total, inicio, fim, meio, nenhum)
+    4. Grava fragmentos resultantes
+
+DELPHI (alteracoes):
+  DAO.Comercial.AcordoComercialNovo.Acordo.SellOut.Fechamento.pas:
+    + FSQLPeriodos: TDataSet (campo + property + destroy)
+    + LocalizarPeriodosAtivos(AIdAcordo): Boolean
+      SELECT CD_PRODUTO, DT_INICIO, DT_FIM + JOIN ITEM (PC_UNIDADE, VL_UNIDADE)
+      FROM TB_ACORDOCOMERCIALSELLOUTPERIODO ORDER BY CD_PRODUTO, DT_INICIO
+
+  Rgn.Comercial.AcordoComercial.SellOut.pas:
+    + ProcessarVendasProduto(AVOFiltro, ACodigoProduto, APercentual, AValor,
+        ADicionarioEmpresa, AConsiderarDevolucoes): public method
+      Wraps LocalizarVendas + ProcessarVendas para um unico produto
+
+  Rgn.Comercial.AcordoComercialNovo.Acordo.SellOut.Fechamento.pas:
+    + uses: Rgn.Comercial.AcordoComercial.SellOutConfiguracao,
+            Comercial.AcordoComercial.SellOutConfiguracao
+    ExecutarFechamentoAutomatico REESCRITO:
+    + Nested procedure LocalizarESalvar (fallback periodo completo, todos produtos)
+    + Nested procedure ExecutarFechamentoFragmentado (POR PRODUTO):
+      - LocalizarItemGrid: busca/cria item na lista por CodigoProduto
+      - Carrega ConsiderarDevolucoes da configuracao
+      - Itera SQLPeriodos (ordenado por CD_PRODUTO, DT_INICIO)
+      - Para cada registro: ProcessarVendasProduto com periodo do fragmento
+      - Acumula em oDicionarioEmpresa (ContainsKey pattern)
+      - Monta oListaGrid com LocalizarItemGrid
+      - Salvar chamado UMA vez com periodo completo do acordo para datas do lote
+    + Se tem fragmentos: ExecutarFechamentoFragmentado
+    + Se nao tem fragmentos: LocalizarESalvar (fallback original)

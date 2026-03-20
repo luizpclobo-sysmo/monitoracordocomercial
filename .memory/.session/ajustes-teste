@@ -1,0 +1,123 @@
+AJUSTES DE DADOS PARA TESTE - SELL OUT
+========================================
+
+BASE: 323665 (192.168.3.143:5432, postgres/postgres)
+PSQL: "/c/Program Files/PostgreSQL/17/bin/psql.exe"
+PGPASSWORD=postgres "/c/Program Files/PostgreSQL/17/bin/psql.exe" -h 192.168.3.143 -U postgres -d 323665
+
+TABELAS PRINCIPAIS:
+  TB_ACORDOCOMERCIAL              -> Cabecalho do acordo (TX_TIPO='S', TX_SUBTIPO='O' para Sell Out)
+  TB_ACORDOCOMERCIALSELLOUTITEM   -> Itens/produtos do acordo (PC_UNIDADE, VL_UNIDADE)
+  TB_ACORDOCOMERCIALSELLOUTTOTAL  -> Config fechamento (fl_fechamentomanual, forma pgto, etc)
+  TB_ACORDOCOMERCIALEMPRESA       -> Empresas vinculadas ao acordo
+  GCENFS01                        -> Cabecalho NF saida (venda) - campos curtos: MOD, EMP, NUM, SER, DTR, CFL, VTM
+  GCEITM01                        -> Itens da NF saida (venda) - campos: MOD, EMP, NUM, SER, DTR, PRO, QNT, VTL, OP1, OP2
+  TB_ACORDOCOMERCIALSELLOUTPROCESSAMENTO      -> Processamento executer (CD_ACORDO, CD_TIPO, CD_ETAPA)
+  TB_ACORDOCOMERCIALSELLOUTITEMPROCESSAMENTO  -> Itens processamento (CD_ACORDO, CD_EMPRESA, CD_PRODUTO, CD_TIPO, CD_ETAPA)
+  TB_ACORDOCOMERCIALSELLOUTPERIODO            -> Fragmentos de periodo calculados pelo executer
+
+CHAVES DAS TABELAS DE VENDA:
+  GCENFS01 (cabecalho): MOD + EMP + NUM + SER + DTR (+ CCF, PDV, CUP para PDV)
+  GCEITM01 (itens):     MOD + EMP + NUM + SER + DTR + PRO + OP1
+  Filtros padrao venda: MOD='E', OP1='S', OP2 in ('V','F')
+
+CAMPOS GCEITM01:
+  MOD = tipo movimento ('E' = emissao)
+  EMP = codigo empresa
+  NUM = numero da nota
+  SER = serie
+  DTR = data
+  PRO = codigo produto
+  QNT = quantidade
+  VTL = valor total liquido
+  OP1 = operacao ('S' = saida, 'E' = entrada/devolucao)
+  OP2 = tipo ('V' = venda, 'F' = faturamento, 'D' = devolucao)
+
+=============================================
+COMO AJUSTAR QUANTIDADE DE ITENS DA VENDA:
+=============================================
+UPDATE GCEITM01 SET QNT = <quantidade>
+ WHERE MOD = 'E' AND EMP = <empresa> AND NUM = <numero> AND SER = '<serie>'
+   AND DTR = '<data>' AND PRO = <produto> AND OP1 = 'S';
+
+Exemplo (todos itens da venda 900096 para 100 unidades):
+  UPDATE GCEITM01 SET QNT = 100.000
+   WHERE MOD = 'E' AND EMP = 1 AND NUM = 900096 AND SER = '1'
+     AND DTR = '2026-03-09' AND OP1 = 'S';
+
+=============================================
+COMO MOVER DATA DA VENDA:
+=============================================
+-- 1. Mover itens (GCEITM01)
+UPDATE GCEITM01 SET DTR = '<nova_data>'
+ WHERE MOD = 'E' AND EMP = <empresa> AND NUM = <numero> AND SER = '<serie>'
+   AND DTR = '<data_atual>' AND OP1 = 'S';
+
+-- 2. Mover cabecalho (GCENFS01)
+UPDATE GCENFS01 SET DTR = '<nova_data>'
+ WHERE MOD = 'E' AND EMP = <empresa> AND NUM = <numero> AND SER = '<serie>'
+   AND DTR = '<data_atual>';
+
+Exemplo (venda 900096 de 10/03 para 09/03):
+  UPDATE GCEITM01 SET DTR = '2026-03-09'
+   WHERE MOD = 'E' AND EMP = 1 AND NUM = 900096 AND SER = '1'
+     AND DTR = '2026-03-10' AND OP1 = 'S';
+  UPDATE GCENFS01 SET DTR = '2026-03-09'
+   WHERE MOD = 'E' AND EMP = 1 AND NUM = 900096 AND SER = '1'
+     AND DTR = '2026-03-10';
+
+=============================================
+COMO MOVER DATA DO ACORDO:
+=============================================
+UPDATE TB_ACORDOCOMERCIAL
+   SET DT_ACORDOINICIO = '<nova_data_inicio>',
+       DT_ACORDOFIM = '<nova_data_fim>'
+ WHERE ID_ACORDO = <id>;
+
+Exemplo (acordo 195 id=81 para 09/03):
+  UPDATE TB_ACORDOCOMERCIAL
+     SET DT_ACORDOINICIO = '2026-03-09', DT_ACORDOFIM = '2026-03-09'
+   WHERE ID_ACORDO = 81;
+
+=============================================
+COMO CONSULTAR VENDA E CRUZAR COM ACORDO:
+=============================================
+-- Buscar venda
+SELECT NUM, SER, DTR, EMP, VTM FROM GCENFS01
+ WHERE NUM = <numero> AND SER = '<serie>';
+
+-- Itens da venda
+SELECT PRO, QNT, VTL FROM GCEITM01
+ WHERE MOD = 'E' AND NUM = <numero> AND SER = '<serie>' AND OP1 = 'S'
+ ORDER BY PRO;
+
+-- Itens do acordo sell out
+SELECT CD_PRODUTO, PC_UNIDADE, VL_UNIDADE
+  FROM TB_ACORDOCOMERCIALSELLOUTITEM WHERE CD_ACORDO = <id_acordo>
+ ORDER BY CD_PRODUTO;
+
+-- Empresas do acordo
+SELECT CD_EMPRESA FROM TB_ACORDOCOMERCIALEMPRESA WHERE CD_ACORDO = <id_acordo>;
+
+-- Periodos/fragmentos calculados
+SELECT CD_PRODUTO, DT_INICIO::date, DT_FIM::date
+  FROM TB_ACORDOCOMERCIALSELLOUTPERIODO WHERE CD_ACORDO = <id_acordo>
+ ORDER BY CD_PRODUTO, DT_INICIO;
+
+-- Estado do processamento
+SELECT CD_TIPO, CD_ETAPA FROM TB_ACORDOCOMERCIALSELLOUTPROCESSAMENTO WHERE CD_ACORDO = <id_acordo>;
+SELECT CD_PRODUTO, CD_TIPO, CD_ETAPA FROM TB_ACORDOCOMERCIALSELLOUTITEMPROCESSAMENTO WHERE CD_ACORDO = <id_acordo>;
+
+=============================================
+COMO LIMPAR PROCESSAMENTO (para reprocessar):
+=============================================
+DELETE FROM TB_ACORDOCOMERCIALSELLOUTPERIODO WHERE CD_ACORDO = <id_acordo>;
+DELETE FROM TB_ACORDOCOMERCIALSELLOUTITEMPROCESSAMENTO WHERE CD_ACORDO = <id_acordo>;
+DELETE FROM TB_ACORDOCOMERCIALSELLOUTPROCESSAMENTO WHERE CD_ACORDO = <id_acordo>;
+
+=============================================
+DADOS DE TESTE ATUAIS (2026-03-10):
+=============================================
+Acordo 194 (id=80): vigencia 2000-01-01 a 2026-03-09, 10 produtos, empresa 1
+Acordo 195 (id=81): vigencia 2026-03-09 a 2026-03-09, 2 produtos (10,11), empresa 1, VL_UNIDADE=0.25
+Venda 900096 serie 1: data 2026-03-09, empresa 1, produtos 10 (100un) e 11 (100un)

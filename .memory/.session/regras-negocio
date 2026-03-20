@@ -1,0 +1,56 @@
+REGRAS DE NEGOCIO - ACORDO COMERCIAL SELL OUT
+===============================================
+
+CONCEITO:
+  Acordo comercial Sell Out = acordo baseado em vendas ao consumidor final.
+  O fornecedor paga uma verba (% ou valor fixo por unidade) sobre as vendas
+  realizadas no periodo do acordo.
+
+CICLO DE VIDA:
+  1. CADASTRO: Usuario cria acordo no sysmovs (eca105.pas)
+     - Define fornecedor, periodo, produtos com % ou valor unitario
+     - Define empresas participantes
+     - Configura forma de pagamento, banco, etc
+     - Situacao: F (Firmado)
+
+  2. PROCESSAMENTO: Sysmo Executer (processo 987, diario)
+     - Abertura: quando acordo entra em vigencia -> processa verba
+     - Fechamento: quando acordo sai de vigencia -> estorna verba
+     - Resolve prioridades (conflitos entre acordos)
+     - Calcula fragmentos de periodo (feature #323665)
+
+  3. FECHAMENTO: DLL AcordoComercialSellOut.dll
+     - Localiza vendas do periodo (GCEITM01 + GCENFS01)
+     - Calcula verba: QTD_VENDIDA * VL_UNIDADE (ou QTD * % * PRECO)
+     - Gera lote (TB_ACORDOCOMERCIALSELLOUT)
+     - Gera prestacao financeira (TB_ACORDOCOMERCIALPRESTACAO)
+     - Gera integracao documento (TB_ACORDOCOMERCIALINTEGRACAODOCUMENTO)
+     - Finaliza acordo: TX_SITUACAO = 'X'
+
+CALCULO DA VERBA:
+  Se VL_UNIDADE > 0: verba = QTD_VENDIDA * VL_UNIDADE
+  Se PC_UNIDADE > 0: verba = QTD_VENDIDA * (PC_UNIDADE/100) * PRECO_VENDA
+  Exemplo: 100 unidades * R$0.25 = R$25.00 por produto
+
+PRIORIDADE DE ACORDOS (quando multiplos acordos cobrem o mesmo produto/empresa):
+  1. Menor duracao (DT_FIM - DT_INICIO)
+  2. Inicio mais recente (DT_ACORDOINICIO DESC)
+  3. Maior ID do acordo (ID_ACORDO DESC)
+  Acordo prioritario: abertura ativa, outros: finalizados
+  Fechamento conflitante (existe abertura prioritaria): finalizado
+
+FRAGMENTOS (feature #323665):
+  Quando um acordo de fechamento tem sobreposicao com acordos de abertura prioritarios,
+  o periodo eh fragmentado. O fechamento so considera vendas nos periodos nao cobertos
+  por acordos de maior prioridade.
+  Tabela: TB_ACORDOCOMERCIALSELLOUTPERIODO (cd_acordo, cd_empresa, cd_produto, dt_inicio, dt_fim)
+
+VENDAS CONSIDERADAS:
+  - NF saida (GCEITM01.MOD='E', OP1='S')
+  - Tipo venda ou faturamento (OP2 IN ('V','F'))
+  - Quantidade positiva (QNT > 0)
+  - Exclui NFC-e (not exists GCENFR01.NR_MODELO=65)
+  - PDV=0, CUP=0 (exclui cupom fiscal)
+  - Periodo: entre DT_ACORDOINICIO e DT_ACORDOFIM (ou fragmentos)
+  - Empresas: apenas as vinculadas ao acordo
+  - Se considerar devolucoes: soma tambem OP1='E', OP2='D' (com sinal negativo)

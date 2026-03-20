@@ -1,0 +1,83 @@
+MONITOR ACORDO COMERCIAL - INDICE DE MEMORIA
+===============================================
+Ultima atualizacao: 2026-03-10
+Projeto: MonitorAcordoComercial (Java Quarkus + React)
+Origem: Feature #323665 (sobreposicao de periodos - Acordo Comercial Sell Out)
+
+OBJETIVO:
+  Dashboard/relatorio que exibe todas as informacoes de um Acordo Comercial Sell Out,
+  da origem (cadastro) ate o destino (documentos financeiros gerados).
+
+ARQUIVOS (nesta pasta .session/):
+  index             -> Este indice
+  schema            -> Tabelas, colunas e relacionamentos do banco 323665
+  pipeline          -> Maquina de estados do processamento (9 extratores)
+  fluxo-completo    -> Ciclo de vida: cadastro + executer + DLL
+  ajustes-teste     -> Como ajustar vendas/acordos para teste
+  regras-negocio    -> Regras de negocio do sell out
+  backend           -> Estrutura do backend Quarkus, endpoints, queries
+  frontend          -> Estrutura do frontend React, componentes, rotas
+
+ESTRUTURA DO PROJETO:
+  D:\Lobo\Projetos\claude\MonitorAcordoComercial\
+    backend/           -> Java Quarkus 3.8.1 (Maven, porta 8180)
+    frontend/          -> React 18 + TypeScript + Vite (porta 3000)
+    .memory/           -> Memoria persistente
+
+COMO RODAR:
+  Backend:
+    cd D:\Lobo\Projetos\claude\MonitorAcordoComercial\backend
+    JAVA_HOME="C:/Program Files/Java/jdk-17.0.5" ./mvnw quarkus:dev -Dquarkus.console.enabled=false
+    API em http://localhost:8180/api/acordos
+    IMPORTANTE: Java padrao da maquina eh 11, precisa do JAVA_HOME apontando para Java 17
+    IMPORTANTE: Porta 8080 ocupada pelo Jenkins, usar 8180
+
+  Frontend:
+    cd D:\Lobo\Projetos\claude\MonitorAcordoComercial\frontend
+    npm install        (primeira vez)
+    npm run dev
+    App em http://localhost:3000
+    Proxy: /api -> http://localhost:8180 (configurado em vite.config.ts)
+
+ENDPOINTS API:
+  GET /api/acordos           -> Lista todos os acordos sell out
+  GET /api/acordos/{id}      -> Detalhe completo de um acordo
+  GET /api/acordos/{id}/vendas -> Vendas do periodo do acordo
+
+CONEXAO BANCO:
+  Host: 192.168.3.143
+  Porta: 5432
+  Base: 323665
+  Usuario: postgres
+  Senha: postgres
+  Config: backend/src/main/resources/application.properties
+
+JAVA:
+  Java 17 em: C:/Program Files/Java/jdk-17.0.5
+  Java 11 padrao da maquina (JAVA_HOME nao configurado globalmente)
+  Maven nao esta no PATH - usar ./mvnw (Maven Wrapper incluido no projeto)
+
+PROJETO RELACIONADO:
+  Feature #323665: C:\temp\claude\323665
+  Memoria do 323665: C:\temp\claude\323665\.memory\.session\
+  Sysmo Executer: processo 987 (id=33), 9 extratores, 32 eventos
+
+DADOS DE TESTE:
+  Acordo 194 (id=80): vigencia 2000-01-01 a 2026-03-09, 10 produtos, empresa 1, situacao X
+  Acordo 195 (id=81): vigencia 2026-03-09 a 2026-03-09, 2 produtos (10,11), empresa 1, situacao X
+  Venda 900096 serie 1: data 2026-03-09, empresa 1, produtos 10 (100un) e 11 (100un)
+  Lote 38: acordo 195, R$50.00, empresa 1
+  Prestacao: doc 107, R$50.00, venc 2026-04-09
+  Integracao: tipo AC, serie ACC, fornecedor 1001, numero 107
+
+PROBLEMAS RESOLVIDOS:
+  - Porta 8080 ocupada por Jenkins -> mudado para 8180 (application.properties + vite.config.ts)
+  - Maven nao no PATH -> criado Maven Wrapper (mvnw + .mvn/wrapper/)
+  - Java 11 default -> usar JAVA_HOME="C:/Program Files/Java/jdk-17.0.5"
+  - Text block com concatenacao (""" + var + """) invalido no Java -> convertido para String concatenation
+  - Quarkus analytics prompt trava sem console -> usar -Dquarkus.console.enabled=false
+
+ESTADO ATUAL (2026-03-10):
+  Backend: compilando e rodando OK na porta 8180
+  Frontend: rodando OK na porta 3000
+  Aplicacao acessivel em http://localhost:3000

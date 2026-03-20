@@ -1,0 +1,46 @@
+PIPELINE DO PROCESSAMENTO - SYSMO EXECUTER
+=============================================
+Processo 987 (id_processo=33): 9 extratores sequenciais
+
+MAQUINAS DE ESTADO:
+  Cabecalho abertura:    A -> AP -> PP -> X
+  Cabecalho fechamento:  A -> AP -> PP -> AF -> PF -> X
+  Itens (ambos):         A -> P -> AV -> PV -> X
+  E = falha (qualquer ponto, recuperavel por reset no proximo ciclo)
+
+LEGENDA ETAPAS:
+  A  = Aguardando processamento
+  AP = Aguardando processamento dos produtos
+  PP = Processando produtos
+  AF = Aguardando fechamento (DLL)
+  PF = Processando fechamento (DLL)
+  P  = Processando (item)
+  AV = Aguardando verba
+  PV = Processando verba
+  X  = Finalizado
+  E  = Erro/Falha
+
+9 EXTRATORES (ordem de execucao):
+  1. ATIVAR PROCESSAMENTO (ext 55)
+  2. LIMPEZA (ext 65)
+  3. ABERTURA - ACORDOS (ext 56)
+  4. ABERTURA - PRODUTOS (ext 57)
+  5. FECHAMENTO - ACORDOS (ext 58)
+  6. FECHAMENTO - PRODUTOS (ext 59)
+  7. RESOLVER PRIORIDADES + FRAGMENTOS (ext 60)
+  8. PROCESSAR VERBA (ext 61)
+  9. DLL FECHAMENTO (ext 62, evento 159 DESATIVADO)
+
+TRANSICOES DETALHADAS DO FECHAMENTO:
+  A  -> AP  : Extrator 5, ev.150 (POS)
+  AP -> PP  : Extrator 6, ev.151
+  PP -> AF  : Extrator 7, ev.155 (apos resolver prioridades)
+  AF -> PF  : Extrator 9, ev.158
+  PF -> X   : DLL ProcessarFechamento
+
+CORRECOES APLICADAS (2026-03-10):
+  - ev.144, ev.150, ev.195: VALIDACAO(3) -> POS(4)
+  - ev.199 (fragmentos): PRINCIPAL(1) -> POS(4)
+  - Extrator 56: ev.189 reordenado antes do PRINCIPAL
+  - Todos extratores re-salvos via API (fix HASH INVALIDO)
+  - REGRA: nao usar tipo VALIDACAO nos eventos

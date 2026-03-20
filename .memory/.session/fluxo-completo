@@ -1,0 +1,166 @@
+FLUXO COMPLETO - ACORDO COMERCIAL SELL OUT
+============================================
+Ultima verificacao: 2026-03-10
+
+3 ETAPAS PRINCIPAIS:
+  1. CADASTRO    -> eca105.pas (Delphi, sysmovs)
+  2. PROCESSAMENTO -> Sysmo Executer (9 extratores, processo 987)
+  3. FECHAMENTO  -> DLL AcordoComercialSellOut.dll (sysmos1-modular)
+
+FONTES E EXECUTAVEIS:
+  Cadastro (sysmovs):
+    Fonte: D:\dsv-git\dsv-delphi\sysmovs\pas\Eca105.pas
+    Build: D:\dsv-git\dsv-delphi\sysmovs\build\Build.bat
+    Exe:   C:\SysmoVs\sysmovs.exe
+    DPR:   D:\dsv-git\dsv-delphi\sysmovs\dpr\sysmovs.dpr
+
+  DLL Fechamento (sysmos1-modular):
+    Fonte: D:\dsv-git\dsv-delphi\sysmos1-modular\Comercial\AcordoComercial\SellOut\src\pas\
+    Build: D:\dsv-git\dsv-delphi\sysmos1-modular\Comercial\AcordoComercial\SellOut\src\Build.bat
+    DLL:   Gerada pelo build, executada via ExecDll.exe
+    Exec:  c:\sysmovs\ExecDll.exe /dll_name AcordoComercialSellOut.dll /dll_method ProcessarFechamento
+
+  Sysmo Executer:
+    Base: sysmo-executer (192.168.3.143:5432, postgres/postgres)
+    Processo 987 (id_processo=33): "Sysmo Integrador"
+    Agendamento diario 01:00-23:00
+
+BASES DE DADOS:
+  Base aplicacao: 323665 (192.168.3.143:5432, postgres/postgres)
+  Base executer:  sysmo-executer (192.168.3.143:5432, postgres/postgres)
+  Config conexao: C:\SysmoVs\dbxconnections.ini [Delphi]
+  PSQL: "/c/Program Files/PostgreSQL/17/bin/psql.exe"
+
+=============================================
+ETAPA 1: CADASTRO (eca105.pas)
+=============================================
+Usuario cria/edita acordo comercial Sell Out no formulario.
+Tabelas envolvidas:
+  TB_ACORDOCOMERCIAL (cabecalho - tipo='S', subtipo='O')
+  TB_ACORDOCOMERCIALSELLOUTTOTAL (config fechamento, forma pgto, etc)
+  TB_ACORDOCOMERCIALSELLOUTITEM (itens/produtos com % e valor)
+  TB_ACORDOCOMERCIALEMPRESA (empresas vinculadas ao acordo)
+Situacoes do acordo: F=Firmado, D=Descartado, E=Encerrado, X=Finalizado
+
+=============================================
+ETAPA 2: PROCESSAMENTO (Sysmo Executer)
+=============================================
+Processo 987 com 9 extratores sequenciais (flagConcorrente=false).
+Verificado na base em 2026-03-10. Total: 32 eventos ativos.
+
+--- EXTRATOR 1 (id=55, NI=1997, ordem=1): ATIVAR PROCESSAMENTO ---
+  ev.141 (ord=1): Upsert em TB_SISTEMACONTROLESUMARIZACAO ativando o executer
+
+--- EXTRATOR 2 (id=65, NI=2005, ordem=2): LIMPEZA ---
+  ev.166 (ord=1): Limpa TB_HISTORICOPROCESSO >3 meses
+  ev.167 (ord=2): Limpa TB_HISTORICOITEM >3 meses
+  ev.168 (ord=3): [ABERTURA] Limpa processamento tipo A - acordos finalizados/inexistentes
+  ev.191 (ord=4): [FECHAMENTO] Limpa processamento tipo F - acordos encerrados/inexistentes
+  ev.169 (ord=5): Limpa itens orfaos (sem cabecalho correspondente)
+
+--- EXTRATOR 3 (id=56, NI=1998, ordem=3): ABERTURA - ACORDOS ---
+  ev.185 (ord=1): Finaliza pendentes de acordos finalizados/excluidos (tipo=A, situacao in E,X ou inexistente)
+  ev.142 (ord=2): Reseta estados intermediarios -> 'A' (tipo=A, etapa not in A,X)
+  ev.143 (ord=3): INSERT acordos EM VIGENCIA (tipo=A, between inicio e fim, upsert)
+  ev.189 (ord=4): Reabre acordos finalizados em vigencia (tipo=A, X -> A, between inicio e fim)
+  ev.144 (ord=5): Transicao A -> AP (tipo=A)
+
+--- EXTRATOR 4 (id=57, NI=1999, ordem=4): ABERTURA - PRODUTOS ---
+  ev.186 (ord=1): Finaliza itens cujo cabecalho ja esta X (tipo=A)
+  ev.190 (ord=2): Reabre produtos de acordos reabertos (tipo=A, item X -> A se cabecalho em AP)
+  ev.145 (ord=3): Transicao cabecalho AP -> PP (tipo=A)
+  ev.146 (ord=4): Reseta itens intermediarios -> 'A' (tipo=A, etapa not in A,X)
+  ev.147 (ord=5): INSERT produtos/itens dos acordos em PP (tipo=A, upsert)
+
+--- EXTRATOR 5 (id=58, NI=2000, ordem=5): FECHAMENTO - ACORDOS ---
+  ev.187 (ord=1): Finaliza pendentes de acordos excluidos/encerrados (tipo=F, situacao in E,X ou inexistente)
+  ev.148 (ord=2): Reseta estados intermediarios -> 'A' (tipo=F, etapa not in A,X)
+  ev.149 (ord=3): INSERT acordos com FIM DE VIGENCIA (tipo=F, DT_ACORDOFIM < current_date, upsert)
+  ev.150 (ord=4): Transicao A -> AP (tipo=F)
+
+--- EXTRATOR 6 (id=59, NI=2001, ordem=6): FECHAMENTO - PRODUTOS ---
+  ev.188 (ord=1): Finaliza itens cujo cabecalho ja esta X (tipo=F)
+  ev.151 (ord=2): Transicao cabecalho AP -> PP (tipo=F)
+  ev.152 (ord=3): Reseta itens intermediarios -> 'A' (tipo=F, etapa not in A,X)
+  ev.153 (ord=4): INSERT produtos/itens dos acordos em PP (tipo=F, upsert)
+  NOTA: NAO tem transicao PP -> AF aqui. Isso acontece no extrator 7 (ev.155).
+
+--- EXTRATOR 7 (id=60, NI=2002, ordem=7): RESOLVER PRIORIDADES ---
+  ev.154 (ord=1): Move TODOS itens de A -> P (abertura e fechamento)
+  ev.155 (ord=2): Bloco PL/pgSQL que:
+    1. Cria tabela temporaria com prioridades das aberturas:
+       - PARTITION BY empresa+produto
+       - ORDER BY: duracao ASC, inicio DESC, ID_ACORDO DESC
+    2. Abertura prioridade 1 -> 'AV', outros -> 'X'
+    3. Cabecalho abertura PP -> X
+    4. Fechamento conflitante (existe abertura prioritaria p/ mesma empresa+produto) -> 'X'
+    5. Fechamento sem conflito -> 'AV'
+    6. Cabecalho fechamento PP -> AF  *** TRANSICAO PP->AF ACONTECE AQUI ***
+  ev.199 (ord=3): Calcula fragmentos -> TB_ACORDOCOMERCIALSELLOUTPERIODO [NOVO #323665]
+    - Para cada item fechamento em AV:
+      1. Comeca com periodo completo do acordo
+      2. Busca acordos com maior prioridade (mesma logica de prioridade)
+      3. Subtrai periodos sobrepostos (5 casos: total, inicio, fim, meio, nenhum)
+      4. Grava fragmentos resultantes na tabela de periodos
+
+--- EXTRATOR 8 (id=61, NI=2003, ordem=8): PROCESSAR VERBA ---
+  ev.156 (ord=1): Transicao itens AV -> PV
+  ev.157 (ord=2): Chama PCD_ACORDOCOMERCIALVERBAATUALIZAR para cada item PV
+    - Abertura (tipo=A): AEstornar='N' -> aplica verba
+    - Fechamento (tipo=F): AEstornar='S' -> estorna verba
+    - Sucesso -> item X, Falha -> item E
+  ev.195 (ord=3): Propaga falha: se algum item E, cabecalho -> E
+
+--- EXTRATOR 9 (id=62, NI=2004, ordem=9): DLL FECHAMENTO ---
+  ev.158 (ord=1): Transicao cabecalho AF -> PF (tipo=F)
+  ev.159 (ord=2): Executa DLL ProcessarFechamento
+    COMANDO: executar(ExecDll.exe /dll_name AcordoComercialSellOut.dll /dll_method ProcessarFechamento --showlog, C:\SysmoVs)
+    cd_conexao=3 (DLL)
+    *** ATENCAO: fl_ativo=FALSE - DLL DESATIVADA! ***
+
+=============================================
+MAQUINAS DE ESTADO
+=============================================
+  Cabecalho abertura:    A -> AP -> PP -> X
+  Cabecalho fechamento:  A -> AP -> PP -> AF -> PF -> X
+  Itens (ambos):         A -> P -> AV -> PV -> X
+  E = falha (qualquer ponto, recuperavel por reset no proximo ciclo)
+
+  Detalhamento das transicoes de cabecalho fechamento:
+    A  -> AP  : Extrator 5, ev.150 (aguardando processamento dos produtos)
+    AP -> PP  : Extrator 6, ev.151 (processando produtos)
+    PP -> AF  : Extrator 7, ev.155 (apos resolver prioridades)
+    AF -> PF  : Extrator 9, ev.158 (inicio processamento DLL)
+    PF -> X   : DLL (ao concluir com sucesso)
+
+=============================================
+ETAPA 3: FECHAMENTO (DLL)
+=============================================
+DLL: AcordoComercialSellOut.dll, metodo ProcessarFechamento
+
+Fluxo:
+  1. DAO.Localizar(): SELECT WHERE CD_TIPO='F' AND CD_ETAPA='PF'
+  2. Para cada acordo:
+     a) Inicia transacao
+     b) ExecutarFechamento(IdAcordo, ProcessarCustoComercial=False)
+     c) Sucesso: CD_ETAPA='X' / Falha: rollback + CD_ETAPA='E'
+
+  ExecutarFechamento:
+  - LocalizarAcordo -> dados do acordo + total
+  - CarregarSistema (dados empresa)
+  - ExecutarFechamentoAutomatico:
+    * Se tem fragmentos (TB_ACORDOCOMERCIALSELLOUTPERIODO): processa por periodo/empresa
+    * Se nao tem: fallback periodo completo
+  - FinalizarAcordo: UPDATE TX_SITUACAO='X'
+  - GravarNotificacao
+
+=============================================
+PROBLEMAS ENCONTRADOS (2026-03-10)
+=============================================
+1. EVENTO 159 (DLL) DESATIVADO (fl_ativo=false)
+   O executer transiciona AF -> PF (ev.158) mas NUNCA chama a DLL (ev.159).
+   Acordos ficam presos na etapa PF indefinidamente.
+   CORRECAO NECESSARIA: ativar evento 159 (fl_ativo=true)
+
+2. ULTIMA EXECUCAO (id=232854) COM STATUS 4 (cancelada/parada)
+   Nenhum extrator foi executado. Provavelmente parado manualmente.

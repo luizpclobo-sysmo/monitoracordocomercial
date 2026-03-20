@@ -1,0 +1,10 @@
+REGRAS E PREFERENCIAS DO USUARIO
+==================================
+
+- SEMPRE salvar em memoria os processos mais importantes (resolucoes, decisoes,
+  caminhos encontrados, erros e solucoes) para continuidade entre sessoes.
+- Usar heredoc para scripts Python com senha (evitar $ no bash).
+- Conectar diretamente na base para atualizar scripts (NAO usar import JSON).
+- Memoria organizada em .memory/ com MEMORY.md + .session/ por assunto.
+- Scripts gerados devem ficar em .memory/.script/ (nao na raiz do projeto).
+- Arquivos temporarios devem ficar em .memory/.temp/ (nao na raiz do projeto).
