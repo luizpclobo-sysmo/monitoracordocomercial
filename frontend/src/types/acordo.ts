@@ -17,6 +17,7 @@ export interface ProdutoVerba {
   pcUnidadeAcordo: number | null;
   txTipoAcordo: string | null;
   txSubtipoAcordo: string | null;
+  vlPrecoVenda: number | null;
   tipoAcordoDescricao: string;
   vigente: boolean;
   vlVerbaEsperada: number | null;

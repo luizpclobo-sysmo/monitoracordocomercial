@@ -112,6 +112,7 @@ export const ProdutoVerbaList: React.FC = () => {
               <th>Cta Com.</th>
               <th>Ac. Vig.</th>
               <th>Tipo</th>
+              <th>Preço</th>
               <th>Vl Acordo</th>
               <th>% Acordo</th>
               <th>Vl Esperado</th>
@@ -129,6 +130,7 @@ export const ProdutoVerbaList: React.FC = () => {
                 <td className="cell-number">{formatDecimal(p.vlVerbaContaComercial)}</td>
                 <td className="cell-number">{p.nrAcordoVigente || '-'}</td>
                 <td>{`${(p.txTipoAcordo || '').trim()}${(p.txSubtipoAcordo || '').trim()}`}</td>
+                <td className="cell-number">{formatDecimal(p.vlPrecoVenda)}</td>
                 <td className="cell-number">{formatDecimal(p.vlUnidadeAcordo)}</td>
                 <td className="cell-number">{formatDecimal(p.pcUnidadeAcordo)}</td>
                 <td className="cell-number">{formatDecimal(p.vlVerbaEsperada)}</td>
@@ -145,7 +147,7 @@ export const ProdutoVerbaList: React.FC = () => {
             ))}
             {produtosFiltrados.length === 0 && (
               <tr>
-                <td colSpan={12} className="empty-cell">Nenhum produto com verba encontrado</td>
+                <td colSpan={13} className="empty-cell">Nenhum produto com verba encontrado</td>
               </tr>
             )}
           </tbody>
