@@ -123,7 +123,6 @@ public class AcordoRepository {
                    FL_FECHAMENTOMANUAL,
                    CD_FORMAPAGAMENTO,
                    CD_CONDICAOPAGAMENTO,
-                   CD_BANCO,
                    TX_CONTROLE,
                    TX_MENSAGEM,
                    FL_ATRIBUIRVERBACONTACOMERCIAL
@@ -142,7 +141,6 @@ public class AcordoRepository {
                     dto.setFlFechamentoManual(rs.getString("FL_FECHAMENTOMANUAL"));
                     dto.setCdFormaPagamento(rs.getInt("CD_FORMAPAGAMENTO"));
                     dto.setCdCondicaoPagamento(rs.getInt("CD_CONDICAOPAGAMENTO"));
-                    dto.setCdBanco(rs.getInt("CD_BANCO"));
                     dto.setTxControle(rs.getString("TX_CONTROLE"));
                     dto.setTxMensagem(rs.getString("TX_MENSAGEM"));
                     dto.setFlAtribuirVerbaContaComercial(rs.getString("FL_ATRIBUIRVERBACONTACOMERCIAL"));
@@ -517,7 +515,6 @@ public class AcordoRepository {
                    FL_UTILIZADO,
                    CD_FORMAPAGAMENTO,
                    CD_CONDICAOPAGAMENTO,
-                   CD_BANCO,
                    CD_ORIGEM
               FROM TB_ACORDOCOMERCIALPRESTACAO
              WHERE NR_ACORDO = ?
@@ -550,7 +547,6 @@ public class AcordoRepository {
                     dto.setFlUtilizado(rs.getString("FL_UTILIZADO"));
                     dto.setCdFormaPagamento(rs.getInt("CD_FORMAPAGAMENTO"));
                     dto.setCdCondicaoPagamento(rs.getInt("CD_CONDICAOPAGAMENTO"));
-                    dto.setCdBanco(rs.getInt("CD_BANCO"));
                     dto.setCdOrigem(rs.getInt("CD_ORIGEM"));
                     result.add(dto);
                 }

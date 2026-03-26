@@ -138,7 +138,6 @@ export const AcordoDetail: React.FC = () => {
             />
             <InfoField label="Forma Pagamento" value={acordo.sellOutTotal.cdFormaPagamento} />
             <InfoField label="Condicao Pagamento" value={acordo.sellOutTotal.cdCondicaoPagamento} />
-            <InfoField label="Banco" value={acordo.sellOutTotal.cdBanco} />
             <InfoField label="Controle" value={acordo.sellOutTotal.txControle} />
             <InfoField
               label="Atribuir Verba Conta Comercial"

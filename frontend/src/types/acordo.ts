@@ -75,7 +75,6 @@ export interface SellOutTotal {
   flFechamentoManual: string | null;
   cdFormaPagamento: number;
   cdCondicaoPagamento: number;
-  cdBanco: number;
   txControle: string | null;
   txMensagem: string | null;
   flAtribuirVerbaContaComercial: string | null;
@@ -162,7 +161,6 @@ export interface Prestacao {
   flUtilizado: string | null;
   cdFormaPagamento: number;
   cdCondicaoPagamento: number;
-  cdBanco: number;
   cdOrigem: number;
 }
 

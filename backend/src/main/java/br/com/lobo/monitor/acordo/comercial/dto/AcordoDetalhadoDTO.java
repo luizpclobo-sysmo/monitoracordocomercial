@@ -139,7 +139,6 @@ public class AcordoDetalhadoDTO {
         private String flFechamentoManual;
         private int cdFormaPagamento;
         private int cdCondicaoPagamento;
-        private int cdBanco;
         private String txControle;
         private String txMensagem;
         private String flAtribuirVerbaContaComercial;
@@ -155,9 +154,6 @@ public class AcordoDetalhadoDTO {
 
         public int getCdCondicaoPagamento() { return cdCondicaoPagamento; }
         public void setCdCondicaoPagamento(int cdCondicaoPagamento) { this.cdCondicaoPagamento = cdCondicaoPagamento; }
-
-        public int getCdBanco() { return cdBanco; }
-        public void setCdBanco(int cdBanco) { this.cdBanco = cdBanco; }
 
         public String getTxControle() { return txControle; }
         public void setTxControle(String txControle) { this.txControle = txControle; }
@@ -373,7 +369,6 @@ public class AcordoDetalhadoDTO {
         private String flUtilizado;
         private int cdFormaPagamento;
         private int cdCondicaoPagamento;
-        private int cdBanco;
         private int cdOrigem;
 
         public BigDecimal getCdSequencial() { return cdSequencial; }
@@ -429,9 +424,6 @@ public class AcordoDetalhadoDTO {
 
         public int getCdCondicaoPagamento() { return cdCondicaoPagamento; }
         public void setCdCondicaoPagamento(int cdCondicaoPagamento) { this.cdCondicaoPagamento = cdCondicaoPagamento; }
-
-        public int getCdBanco() { return cdBanco; }
-        public void setCdBanco(int cdBanco) { this.cdBanco = cdBanco; }
 
         public int getCdOrigem() { return cdOrigem; }
         public void setCdOrigem(int cdOrigem) { this.cdOrigem = cdOrigem; }
