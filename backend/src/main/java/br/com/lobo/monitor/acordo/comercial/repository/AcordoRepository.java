@@ -335,7 +335,7 @@ public class AcordoRepository {
     }
 
     // =========================================================================
-    // 9. Periodos/Fragmentos (TB_ACORDOCOMERCIALSELLOUTPERIODO)
+    // 9. Periodos/Fragmentos (TB_ACORDOCOMERCIALSELLOUTPROCESSAMENTOPERIODO)
     // =========================================================================
     public List<PeriodoDTO> buscarPeriodos(BigDecimal idAcordo) {
         String sql = """
@@ -345,7 +345,7 @@ public class AcordoRepository {
                    CD_PRODUTO,
                    DT_INICIO,
                    DT_FIM
-              FROM TB_ACORDOCOMERCIALSELLOUTPERIODO
+              FROM TB_ACORDOCOMERCIALSELLOUTPROCESSAMENTOPERIODO
              WHERE CD_ACORDO = ?
              ORDER BY CD_EMPRESA, CD_PRODUTO, DT_INICIO
             """;
@@ -377,7 +377,7 @@ public class AcordoRepository {
         String[] sqls = {
             "DELETE FROM TB_ACORDOCOMERCIALSELLOUTITEMPROCESSAMENTO",
             "DELETE FROM TB_ACORDOCOMERCIALSELLOUTITEMPROCESSAMENTOHISTORICO",
-            "DELETE FROM TB_ACORDOCOMERCIALSELLOUTPERIODO",
+            "DELETE FROM TB_ACORDOCOMERCIALSELLOUTPROCESSAMENTOPERIODO",
             "DELETE FROM TB_ACORDOCOMERCIALSELLOUTTOTAL",
             "DELETE FROM TB_ACORDOCOMERCIALSELLOUTITEM",
             "DELETE FROM TB_ACORDOCOMERCIALSELLOUTPROCESSAMENTO",
@@ -435,7 +435,7 @@ public class AcordoRepository {
     }
 
     public void atualizarPeriodo(BigDecimal idSequencial, LocalDate dtInicio, LocalDate dtFim) {
-        String sql = "UPDATE TB_ACORDOCOMERCIALSELLOUTPERIODO SET DT_INICIO = ?, DT_FIM = ? WHERE ID_SEQUENCIAL = ?";
+        String sql = "UPDATE TB_ACORDOCOMERCIALSELLOUTPROCESSAMENTOPERIODO SET DT_INICIO = ?, DT_FIM = ? WHERE ID_SEQUENCIAL = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setDate(1, Date.valueOf(dtInicio));
